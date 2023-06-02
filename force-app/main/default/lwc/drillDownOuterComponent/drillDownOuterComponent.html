@@ -1,0 +1,26 @@
+<template>
+    <lightning-card  title="Hello">
+        <lightning-button label="New" slot="actions"></lightning-button>
+        <p class="slds-p-horizontal_small">Current Record: {recordId}</p>
+        <p slot="footer">Footer Object Name: {objectName}</p>
+        
+        <br>
+        <template if:true={hasForObjDisplay}>
+            <lightning-card>
+                <p class="slds-p-horizontal_small">Came up: {incomingObjName}</p>
+            </lightning-card>
+
+            <lightning-button variant="Neutral" class="slds-m-left_x-small" label="Drill down!" title="Drill down this object" onclick={drillDownButtonClick}></lightning-button>
+        </template>
+
+
+        <br>
+        <lightning-card title="inner drill down">
+            <c-drill-down-inner-component if:true={objectName} onobjhitevent={handleObjHitEvent} incoming-record={recordId} incoming-oject-name={objectName}></c-drill-down-inner-component>
+        </lightning-card>
+
+    </lightning-card>
+
+
+
+</template>
