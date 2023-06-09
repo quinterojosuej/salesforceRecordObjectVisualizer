@@ -1,16 +1,27 @@
 <template>
     <lightning-card  title="Hello">
-        <lightning-button label="New" slot="actions"></lightning-button>
-        <p class="slds-p-horizontal_small">Current Record: {recordId}</p>
-        <p slot="footer">Footer Object Name: {objectName}</p>
+        <!-- <lightning-button label="New" slot="actions"></lightning-button> -->
+        <!-- <p class="slds-p-horizontal_small">Currently Looking at: {recordId}</p> -->
+        <p slot="footer">Original Object: {objectName}</p>
         
         <br>
         <template if:true={hasForObjDisplay}>
             <lightning-card>
-                <p class="slds-p-horizontal_small">Came up: {incomingObjName}</p>
+                <p class="slds-p-horizontal_small">Currently Looking at {incomingObj.objName} records</p>
+                <br>
+
+                <lightning-datatable
+                key-field="id"
+                data={displayData}
+                columns={columns}>
+                </lightning-datatable>
+
             </lightning-card>
 
-            <lightning-button variant="Neutral" class="slds-m-left_x-small" label="Drill down!" title="Drill down this object" onclick={drillDownButtonClick}></lightning-button>
+            <template if:true={canDrillDown}>
+                <lightning-button variant="Neutral" class="slds-m-left_x-small" label="Drill down!" title="Drill down this object" onclick={drillDownButtonClick}></lightning-button>
+            </template>
+
         </template>
 
 

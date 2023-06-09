@@ -15,11 +15,11 @@ export default class DrillDownInnerComponent extends LightningElement {
         "vertical_text_offset": 10, // used in parent
         "horizontal_spacing": 75, // this one is just the horizontal size plus the edge spacing
         "vertical_spacing": 45, // this one is just vertical the size plus hte edge spacing
-        "vertical_lengths": [
+        "vertical_lengths": 
             {
                 0: 1 // the key is the y val and the value is how many at that y val
             }
-        ]
+        
 
     };
 
@@ -39,7 +39,7 @@ export default class DrillDownInnerComponent extends LightningElement {
         await this.startOrderObj(metaOutput);
         await this.startCanvas();
 
-        await this.drillDown(this.orderObj[this.orderObj["parentObj"]]); // the parentObj is just label
+        // await this.drillDown(this.orderObj[this.orderObj["parentObj"]]); // the parentObj is just label
     }
 
     async startCanvas() {
@@ -58,8 +58,8 @@ export default class DrillDownInnerComponent extends LightningElement {
             console.log('drillDown adding more items to row. new length:', this.standards['vertical_lengths'][drillObj['nestValY'] + 1]-drillObj['lookups'].length, 'added length:', drillObj['lookups'].length)
         }
         else{
-            this.standards['vertical_lengths'][drillObj['nestValY'] + 1] = 0
-            console.log('drillDown first for the row.', this.standards['vertical_lengths'][drillObj['nestValY'] + 1])
+            this.standards['vertical_lengths'][drillObj['nestValY'] + 1] = drillObj['lookups'].length;
+            console.log('drillDown first for the row.', drillObj['nestValY'] + 1 , this.standards['vertical_lengths'][drillObj['nestValY'] + 1])
         }
 
         // iterate over the objects lookups
@@ -103,6 +103,7 @@ export default class DrillDownInnerComponent extends LightningElement {
                 "lookups": metaOutput.Object_Related_Objects__c.split(/\r\n/g),
                 "nestValX": 0, // it is the first one after all
                 "nestValY": 0,
+                "parent": [],
         }
         // stuff just won't console.log, just loop
         this.orderObj[this.orderObj["parentObj"]]['lookups'].forEach( (val, ind) => { console.log(ind, val) });
@@ -119,7 +120,10 @@ export default class DrillDownInnerComponent extends LightningElement {
         // draw rectangle first
         canvas.fillStyle = 'hsl('+ String(toDrawData["nestValY"]*15) +',95%,50%)';
         // it goes x, y, width, height
-        canvas.rect(toDrawData["nestValX"]*this.standards["horizontal_spacing"]+this.standards["horizontal_edge_spacing"], toDrawData["nestValY"]*this.standards["vertical_spacing"], this.standards["horizontal_sizing"], this.standards["vertical_sizing"]);
+        canvas.rect(toDrawData["nestValX"]*this.standards["horizontal_spacing"]+this.standards["horizontal_edge_spacing"], 
+        toDrawData["nestValY"]*this.standards["vertical_spacing"], 
+        this.standards["horizontal_sizing"], this.standards["vertical_sizing"]);
+
         canvas.stroke();
         canvas.fill();
         console.log('finished making rectangle');
@@ -186,7 +190,7 @@ export default class DrillDownInnerComponent extends LightningElement {
         return this.template.querySelector('canvas'); // gets the html
     }
 
-    async hitSendUp(yInd, xInd) {
+    async hitSendUp(yInd, xInd) { // come back and fix this
         // first, find what object we are on
         console.log('in the hitSendUp');
         let keys = Object.keys(this.orderObj)
@@ -199,7 +203,7 @@ export default class DrillDownInnerComponent extends LightningElement {
                 hitObj = { ...this.orderObj[key] };
             }
         })
-        console.log('hitSendUp', hitObj)
+        console.log('hitSendUp',JSON.stringify(hitObj))
         // second, send it up
         const sendUpEvent = new CustomEvent("objhitevent", { // lowercase mandatory
             detail: hitObj
@@ -236,9 +240,9 @@ export default class DrillDownInnerComponent extends LightningElement {
         rect = rect.getBoundingClientRect(); //fix up the getcanvas 
         let xClick = event.clientX - rect.left;
         let yCLick = event.clientY - rect.top;
-        // console.log("Coordinate x: " + x, 
-        //             "Coordinate y: " + y, 
-        //             "Canvas:", rect);
+        console.log("Coordinate x: " + xClick, 
+                    "Coordinate y: " + yCLick)
+        
         let topYVal;
         let bottomYVal;
         let leftXVal;
@@ -246,42 +250,69 @@ export default class DrillDownInnerComponent extends LightningElement {
 
         let Xind = -1; // no negatives are possible
         let Yind = -1; // so it works out later
-        
-        this.standards['vertical_lengths'].every( (yVal, yInd) => { //come back to this one... it 'hits'
-            topYVal = yInd * this.standards['vertical_spacing'] + this.standards['vertical_edge_spacing'];
+
+        // working on new one here
+        console.log('vertical_lengths:', JSON.stringify(this.standards['vertical_lengths']))
+        Object.keys(this.standards['vertical_lengths']).every( async (yVal, yInd) => {
+            // console.log('hitless', yInd) 
+            topYVal = yInd * this.standards['vertical_spacing'] + this.standards['vertical_sizing'];
             bottomYVal = (yInd+1) * this.standards['vertical_spacing'];
 
             if( (yCLick > topYVal) && (yCLick < bottomYVal) ) { // in the y range
-                console.log('y hit')
-
-                Array(yInd + 1).fill(0).every( (_, xInd) => {
-                    console.log(xInd);
-                    leftXVal = xInd * this.standards['horizontal_spacing'] + this.standards['horizontal_edge_spacing'];
-                    rightXVal = (xInd + 1) * this.standards['horizontal_spacing'];
-                    
-                    if( (xClick > leftXVal) && (xClick < rightXVal) ) {
-                        console.log('SUCCESS (x, y) hit:', xClick, yCLick); // bookmarked child to paretn behavior
-                        // await this.hitSendUp(yInd, xInd);
-                        Xind = xInd;
-                        Yind = yInd;
-                        return false; // kill the loop, i mean, u can't hit twice lol
-                    }
-                    else{
-                        console.log('leftXVal:', leftXVal, 'rightXVal:', rightXVal, xClick);
-                    }
-
-                })
+                console.log('hit ind:', yInd,'y space to hit: topYval', topYVal, 'bottomYVal', bottomYVal);
+                Yind = yInd
+                // await this.canvasClickHorizontal(yInd);
+                return false;
             }
             else{
-                console.log('topYval:', topYVal, 'bottomYval', bottomYVal, 'hitY', yCLick, (yCLick > topYVal) && (yCLick < bottomYVal) )
+                // console.log('no hit ind:', yInd,'y space to hit: topYval', topYVal, 'bottomYVal', bottomYVal);
+                return true; // we return false when we break out so yeah
             }
-        }) // end of the parent loop
+        })
+
+        if(Yind > -1) {
+            console.log('this.standards[Yind]', this.standards[Yind])
+            // console.log('JSON.stringify', JSON.stringify(Array(this.standards[Yind]).fill(0)))
+            Array(this.standards[Yind]).fill(0).every( (xVal, xInd) => {
+                console.log('xInd', xInd);
+                leftXVal = xInd * this.standards['horizontal_spacing'] + this.standards['horizontal_edge_spacing'];
+                rightXVal = (xInd + 1) * this.standards['horizontal_spacing'];
+                
+                if(  (xClick > leftXVal) && (xClick < rightXVal) ) {
+                    Xind = xInd;
+                    return false;
+                }
+                else{
+                    return true;
+                }
+            })
+
+        }
 
         if(Xind > -1 && Yind > -1) { // if there is any value
             console.log('Xind:', Xind, 'Yind', Yind);
             await this.hitSendUp(Yind, Xind);
         }
         
+    }
+
+    async canvasClickHorizontal(Yind) {
+        console.log('this.standards[Yind]', this.standards[Yind]) // coming out as null?
+        // console.log('JSON.stringify', JSON.stringify(Array(this.standards[Yind]).fill(0)))
+        Array(this.standards[Yind]).fill(0).every( async (xVal, xInd) => {
+            console.log('xInd', xInd);
+            leftXVal = xInd * this.standards['horizontal_spacing'] + this.standards['horizontal_edge_spacing'];
+            rightXVal = (xInd + 1) * this.standards['horizontal_spacing'];
+            
+            if(  (xClick > leftXVal) && (xClick < rightXVal) ) { // we hit!
+                await this.hitSendUp(Yind, xInd);
+                return false;
+            }
+            else{
+                return true;
+            }
+        })
+
     }
 
 }

@@ -16,7 +16,25 @@ public without sharing class accVisualizerUtilities {
     }
 
     @AuraEnabled
-    public static List<SObject> getRows(List<String> ids, String objName) { // change return type later to list<SObject>
+    public static List<SObject> getParentRows(List<String> ids, String objName){
+        String tempQuery = 'SELECT FIELDS(STANDARD) FROM '+ objName +' WHERE '; // this one is temporary! go back to get all fields
+        Iterator<String> strIdIter = ids.iterator();
+        string id;
+        while(strIdIter.hasNext()) {
+
+            id = strIdIter.next();
+            tempQuery = tempQuery + 'Id=\'' + id + '\'';
+            if (strIdIter.hasNext()) {
+                tempQuery = tempQuery + ' OR ';
+            }
+        }
+
+        List<SObject> rowsToReturn = Database.query(tempQuery);
+        return rowsToReturn;
+    }
+
+    @AuraEnabled
+    public static List<SObject> getRows(List<String> ids, String objName, String parentObjName) { // change return type later to list<SObject>
         // need to get the fields and then the actual query....
         // SObjectType accountType = Schema.getGlobalDescribe().get(objName); // holds the fields and we get the Account ones
         // Map<String,Schema.SObjectField> mfields = accountType.getDescribe().fields.getMap();
@@ -33,7 +51,7 @@ public without sharing class accVisualizerUtilities {
         while(strIdIter.hasNext()) {
 
             id = strIdIter.next();
-            tempQuery = tempQuery + 'Id=\'' + id + '\'';
+            tempQuery = tempQuery + parentObjName +'.Id=\'' + id + '\''; // should 
             if (strIdIter.hasNext()) {
                 tempQuery = tempQuery + ' OR ';
             }
