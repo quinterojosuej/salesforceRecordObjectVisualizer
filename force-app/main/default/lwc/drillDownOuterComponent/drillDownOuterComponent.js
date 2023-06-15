@@ -18,7 +18,8 @@ export default class DrillDownOuterComponent extends LightningElement {
 
     columns = [
         { label: 'Id', fieldName: 'Id', type: 'Id' },
-        { label: 'Name', fieldName: 'Name', type: 'text' }
+        { label: 'Name', fieldName: 'Name', type: 'text' },
+        { label: 'Link', fieldName: 'Link', type:'url', typeAttributes: { target: '_blank' } }
     ]
 
     async connectedCallback() {// starting point
@@ -76,7 +77,7 @@ export default class DrillDownOuterComponent extends LightningElement {
             console.log('after get ParentROws:', this.objectName , this.queriedData[this.objectName][0].Id)
 
         }
-        else if(queryObjId != null && queryObjName != null) { // we
+        else if(queryObjId != null && queryObjName != null) { // this one for child obj
             /// go and fix teh getRows and finish implementing
             // need the lookup ids and the lookup obj name and the current obj name
             console.log('child obj apex  call');
@@ -84,14 +85,17 @@ export default class DrillDownOuterComponent extends LightningElement {
             console.log('after getRows:', this.objectName, this.queriedData[queryObjName]);
         }
         else{ // this is where the user did not bother to click the previous one. remove first drillDown on inner
-
+            // not needed anymore. remove later lol
         }
+        this.queriedData[queryObjName].forEach( (val, ind) => { // to make the link
+            val['Link'] = '/' + val.Id;
+        })
 
         this.displayData = this.queriedData[queryObjName]
         if(this.incomingObj.lookups) { // this or a ternary i thinks
             this.canDrillDown = true;
         }
-        else{
+        else{ // obviously if we don't have any lookups. then no drill downs
             this.canDrillDown = false;
         }
         this.hasForObjDisplay = true;

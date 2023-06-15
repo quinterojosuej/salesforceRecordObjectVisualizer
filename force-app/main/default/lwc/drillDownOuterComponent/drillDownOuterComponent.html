@@ -1,10 +1,9 @@
 <template>
-    <lightning-card  title="Hello">
+    <lightning-card  title={objectName}>
         <!-- <lightning-button label="New" slot="actions"></lightning-button> -->
         <!-- <p class="slds-p-horizontal_small">Currently Looking at: {recordId}</p> -->
         <p slot="footer">Original Object: {objectName}</p>
         
-        <br>
         <template if:true={hasForObjDisplay}>
             <lightning-card>
                 <p class="slds-p-horizontal_small">Currently Looking at {incomingObj.objName} records</p>
@@ -26,7 +25,7 @@
 
 
         <br>
-        <lightning-card title="inner drill down">
+        <lightning-card title="Visualizer">
             <c-drill-down-inner-component if:true={objectName} onobjhitevent={handleObjHitEvent} incoming-record={recordId} incoming-oject-name={objectName}></c-drill-down-inner-component>
         </lightning-card>
 

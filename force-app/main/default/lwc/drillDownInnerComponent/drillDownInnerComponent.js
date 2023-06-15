@@ -271,9 +271,9 @@ export default class DrillDownInnerComponent extends LightningElement {
         })
 
         if(Yind > -1) {
-            console.log('this.standards[Yind]', this.standards[Yind])
+            console.log('this.standards[Yind]', JSON.stringify(this.standards.vertical_lengths))
             // console.log('JSON.stringify', JSON.stringify(Array(this.standards[Yind]).fill(0)))
-            Array(this.standards[Yind]).fill(0).every( (xVal, xInd) => {
+            Array(this.standards.vertical_lengths[String(Yind)]).fill(0).every( (xVal, xInd) => {
                 console.log('xInd', xInd);
                 leftXVal = xInd * this.standards['horizontal_spacing'] + this.standards['horizontal_edge_spacing'];
                 rightXVal = (xInd + 1) * this.standards['horizontal_spacing'];
@@ -296,10 +296,10 @@ export default class DrillDownInnerComponent extends LightningElement {
         
     }
 
-    async canvasClickHorizontal(Yind) {
-        console.log('this.standards[Yind]', this.standards[Yind]) // coming out as null?
+    async canvasClickHorizontal(Yind) { // not using this one dum dumb
+        console.log('this.standards[Yind]', JSON.stringify(this.standards.vertical_lengths)) // coming out as null?
         // console.log('JSON.stringify', JSON.stringify(Array(this.standards[Yind]).fill(0)))
-        Array(this.standards[Yind]).fill(0).every( async (xVal, xInd) => {
+        Array(this.standards[String(Yind)]).fill(0).every( async (xVal, xInd) => {
             console.log('xInd', xInd);
             leftXVal = xInd * this.standards['horizontal_spacing'] + this.standards['horizontal_edge_spacing'];
             rightXVal = (xInd + 1) * this.standards['horizontal_spacing'];
