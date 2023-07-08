@@ -4,30 +4,47 @@
         <!-- <p class="slds-p-horizontal_small">Currently Looking at: {recordId}</p> -->
         <p slot="footer">Original Object: {objectName}</p>
         
-        <template if:true={hasForObjDisplay}>
-            <lightning-card>
-                <p class="slds-p-horizontal_small">Currently Looking at {incomingObj.objName} records</p>
-                <br>
+        <template if:false={parentMetadataMissing}>
 
-                <lightning-datatable
-                key-field="id"
-                data={displayData}
-                columns={columns}>
-                </lightning-datatable>
+            <template if:true={hasForObjDisplay}>
+                <lightning-card>
+                    <p class="slds-p-horizontal_small">Currently Looking at {incomingObj.objName} records</p>
+                    <br>
 
-            </lightning-card>
+                    <lightning-datatable
+                    key-field="id"
+                    data={displayData}
+                    columns={columns}>
+                    </lightning-datatable>
 
-            <template if:true={canDrillDown}>
-                <lightning-button variant="Neutral" class="slds-m-left_x-small" label="Drill down!" title="Drill down this object" onclick={drillDownButtonClick}></lightning-button>
+                </lightning-card>
+
+                <template if:true={canDrillDown}>
+                    <lightning-button variant="Neutral" class="slds-m-left_x-small" label="Drill down!" title="Drill down this object" onclick={drillDownButtonClick}></lightning-button>
+                </template>
+
+                <template if:false={canDrillDown}>
+                    <p>Nothing here! ~ todo: make button to go and check again</p>
+
+                    <lightning-button variant="Neutral" class="slds-m-left_x-small" label="Attempt Drill Down" title="Attempt drill down" onclick={attemptDrillDownButtonClick}></lightning-button>
+                    
+                </template>
+
             </template>
 
+            <template if:false={hasForObjDisplay}>
+                <p class="slds-p-horizontal_small">No records! {displayData} records.</p>
+            </template>
+            
+
+            <br>
+            <lightning-card title="Visualizer">
+                <c-drill-down-inner-component if:true={objectName} onobjhitevent={handleObjHitEvent} onnoparentevent={handleNoParentEvent} incoming-record={recordId} incoming-oject-name={objectName}></c-drill-down-inner-component>
+            </lightning-card>
         </template>
-
-
-        <br>
-        <lightning-card title="Visualizer">
-            <c-drill-down-inner-component if:true={objectName} onobjhitevent={handleObjHitEvent} incoming-record={recordId} incoming-oject-name={objectName}></c-drill-down-inner-component>
-        </lightning-card>
+        <template if:true={parentMetadataMissing}>
+            <p>in the parentMetadata is missing</p>
+        </template>
 
     </lightning-card>
 

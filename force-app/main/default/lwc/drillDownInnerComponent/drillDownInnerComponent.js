@@ -27,6 +27,7 @@ export default class DrillDownInnerComponent extends LightningElement {
     // example one:
     // this.orderObj[val] = {
     //     "objName": STRING,
+    //     "devName": STRING
     //     "Id": Id,
     //     "lookups": [STRING, STRING],
     //     "nestValX": ###, // it is the first one after all
@@ -36,8 +37,12 @@ export default class DrillDownInnerComponent extends LightningElement {
 
     async connectedCallback() {
         let metaOutput = await this.checkGetCorrespondingMetadata(String(this.incomingOjectName));
-        await this.startOrderObj(metaOutput);
-        await this.startCanvas();
+        if(Object.keys(metaOutput).length != 0) { // there is data
+            await this.startOrderObj(metaOutput);
+            await this.startCanvas();
+        } else{ // no data, send it back up! 
+            await this.noParent()
+        }
 
         // await this.drillDown(this.orderObj[this.orderObj["parentObj"]]); // the parentObj is just label
     }
@@ -62,35 +67,46 @@ export default class DrillDownInnerComponent extends LightningElement {
             console.log('drillDown first for the row.', drillObj['nestValY'] + 1 , this.standards['vertical_lengths'][drillObj['nestValY'] + 1])
         }
 
-        // iterate over the objects lookups
-        drillObj["lookups"].forEach( async (val, ind) => {
-            // query each lookup 
-            let checkMeta = await this.checkGetCorrespondingMetadata(val);
-            console.log("drillDown output:", checkMeta)
-            if(Object.keys(checkMeta) != 0) { // add it to the order obj
-                this.orderObj[val] = {
-                    "objName": checkMeta.MasterLabel,
-                    "Id": checkMeta.Id,
-                    "lookups": checkMeta.Object_Related_Objects__c.split(/\r\n/g),
-                    "nestValX": ind + nestValXOffSet, // it is the first one after all
-                    "nestValY": drillObj["nestValY"]+1,
-                    "parent": drillObj["objName"]
+        // iterate over the objects lookups, also turn to like a list of strings before hand lol
+        console.log('before the drillObj iterations:', JSON.stringify(drillObj["lookups"]));
+        // console.log(JSON.stringify(drillObj["lookups"].split(/\r\n|\r|\n/g)))
+        if(drillObj["lookups"]){
+            // drillObj["lookups"] = drillObj["lookups"].split(/\r\n|\r|\n/g);
+            drillObj["lookups"].forEach( async (val, ind) => {
+                // query each lookup 
+                let checkMeta = await this.checkGetCorrespondingMetadata(val);
+                console.log("drillDown checkMeta:", checkMeta)
+                if(Object.keys(checkMeta) != 0) { // add it to the order obj
+                    this.orderObj[val] = {
+                        "objName": checkMeta.MasterLabel,
+                        "devName": checkMeta.DeveloperName__c,
+                        "Id": checkMeta.Id,
+                        // "lookups": checkMeta.Object_Related_Objects__c.split(/\r\n/g),
+                        "lookups": checkMeta.Object_Related_Objects__c ? checkMeta.Object_Related_Objects__c.split(/\r\n|\r|\n/g) : [],
+                        "nestValX": ind + nestValXOffSet, // it is the first one after all
+                        "nestValY": drillObj["nestValY"]+1,
+                        "parent": drillObj["objName"],
+                        "parentDevName": drillObj["devName"]
+                    }
+                    this.drawer(this.orderObj[val])
                 }
-                this.drawer(this.orderObj[val])
-            }
-            else {
-                this.orderObj[val] = {
-                    "objName": val,
-                    "Id": null,
-                    "lookups": null,
-                    "nestValX": ind + nestValXOffSet, // it is the first one after all
-                    "nestValY": drillObj["nestValY"]+1,
-                    "parent": drillObj["objName"]
+                else {
+                    this.orderObj[val] = {
+                        "objName": val,
+                        "devName": null,
+                        "Id": null,
+                        "lookups": null,
+                        "nestValX": ind + nestValXOffSet, // it is the first one after all
+                        "nestValY": drillObj["nestValY"]+1,
+                        "parent": drillObj["objName"],
+                        "parentDevName": drillObj["devName"]
+                    }
+                    this.drawer(this.orderObj[val])
                 }
-                this.drawer(this.orderObj[val])
-            }
-            
-        })
+                
+            })
+        }
+
 
     }
 
@@ -99,11 +115,13 @@ export default class DrillDownInnerComponent extends LightningElement {
 
         this.orderObj[metaOutput.MasterLabel] = { // add the object in question
                 "objName": metaOutput.MasterLabel,
+                "devName": metaOutput.DeveloperName__c,
                 "Id": metaOutput.Id,
-                "lookups": metaOutput.Object_Related_Objects__c.split(/\r\n/g),
+                "lookups": metaOutput.Object_Related_Objects__c.split(/\r\n|\r|\n/g),
                 "nestValX": 0, // it is the first one after all
                 "nestValY": 0,
                 "parent": [],
+                "parentDevName": '',
         }
         // stuff just won't console.log, just loop
         this.orderObj[this.orderObj["parentObj"]]['lookups'].forEach( (val, ind) => { console.log(ind, val) });
@@ -149,7 +167,11 @@ export default class DrillDownInnerComponent extends LightningElement {
         canvas.fillStyle = 'hsl('+ String(this.orderObj[parent]["nestValY"]*15) +',95%,50%)';
         // it goes x, y, width, height
         // canvas.rect(this.orderObj[parent]["nestValX"]*30+10, this.orderObj[parent]["nestValY"]*30+10, 30, 20);
-        canvas.rect(this.standards["horizontal_edge_spacing"], this.standards["vertical_edge_spacing"], this.standards['horizontal_sizing'], this.standards['vertical_sizing']);
+        canvas.rect(this.standards["horizontal_edge_spacing"], 
+        this.standards["vertical_edge_spacing"], 
+        this.standards['horizontal_sizing'], 
+        this.standards['vertical_sizing']);
+
         canvas.stroke();
         canvas.fill();
         console.log('finished making rectangle');
@@ -212,10 +234,34 @@ export default class DrillDownInnerComponent extends LightningElement {
         this.dispatchEvent(sendUpEvent);
     }
 
+    async noParent() {
+        const sendUpEvent = new CustomEvent('noparentevent',  {
+            detail: {isParent: false}
+        });
+        this.dispatchEvent(sendUpEvent);
+    }
+
     @api
     async drillDownParentButtonClicked(someParam) { // someParam is the object from the parent
         console.log('drill down clicked, param:', someParam.objName)
         await this.drillDown(someParam)
+    }
+
+    @api
+    async drillDownParentMetadataFix(fromParent) {
+        // object already drawn, just populate the structure and send up again
+        console.log('drillDownParentMetadataFix', fromParent);
+        let tempMeta = await this.checkGetCorrespondingMetadata(fromParent)
+        
+        this.orderObj[fromParent]['Id'] = tempMeta['Id'];
+        this.orderObj[fromParent]['devName'] = tempMeta['DeveloperName__c'];
+        this.orderObj[fromParent]["lookups"] = tempMeta['Object_Related_Objects__c'].split(/\r\n|\r|\n/g);
+        console.log('drillDownMetadataFix:', JSON.stringify(tempMeta))
+        // now that we populated the thing, send it back up
+        const sendUpEvent = new CustomEvent("objhitevent", {
+            detail: {...this.orderObj[fromParent]}
+        });
+        this.dispatchEvent(sendUpEvent);
     }
 
     async checkGetCorrespondingMetadata(incomingObj) {
@@ -261,12 +307,11 @@ export default class DrillDownInnerComponent extends LightningElement {
             if( (yCLick > topYVal) && (yCLick < bottomYVal) ) { // in the y range
                 console.log('hit ind:', yInd,'y space to hit: topYval', topYVal, 'bottomYVal', bottomYVal);
                 Yind = yInd
-                // await this.canvasClickHorizontal(yInd);
                 return false;
             }
             else{
                 // console.log('no hit ind:', yInd,'y space to hit: topYval', topYVal, 'bottomYVal', bottomYVal);
-                return true; // we return false when we break out so yeah
+                return true; // we return false to break out so yeah
             }
         })
 
@@ -296,23 +341,5 @@ export default class DrillDownInnerComponent extends LightningElement {
         
     }
 
-    async canvasClickHorizontal(Yind) { // not using this one dum dumb
-        console.log('this.standards[Yind]', JSON.stringify(this.standards.vertical_lengths)) // coming out as null?
-        // console.log('JSON.stringify', JSON.stringify(Array(this.standards[Yind]).fill(0)))
-        Array(this.standards[String(Yind)]).fill(0).every( async (xVal, xInd) => {
-            console.log('xInd', xInd);
-            leftXVal = xInd * this.standards['horizontal_spacing'] + this.standards['horizontal_edge_spacing'];
-            rightXVal = (xInd + 1) * this.standards['horizontal_spacing'];
-            
-            if(  (xClick > leftXVal) && (xClick < rightXVal) ) { // we hit!
-                await this.hitSendUp(Yind, xInd);
-                return false;
-            }
-            else{
-                return true;
-            }
-        })
-
-    }
 
 }
