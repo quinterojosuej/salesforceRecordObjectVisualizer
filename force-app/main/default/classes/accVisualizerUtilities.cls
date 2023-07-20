@@ -11,12 +11,6 @@ public without sharing class accVisualizerUtilities {
   
     }
 
-    // @AuraEnabled
-    // public static String checkStatusOfJobId(String id){
-    //     DeployRequest deployRequest = [SELECT Id, Status, StartDate, CompletedDate FROM DeployRequest WHERE Id=:id];
-    //     return deployRequest.Status;
-    // }
-
     @AuraEnabled
     public static string getObjectName(string incomingRecord){
         Id id = Id.valueOf(incomingRecord);
@@ -47,16 +41,29 @@ public without sharing class accVisualizerUtilities {
     public static List<SObject> getRows(List<String> ids, String devName, String parentDevName) { // change return type later to list<SObject>
         // need to get the fields and then the actual query....
 
-        // tempQuery = tempQuery + ' FROM ' + objName + ' WHERE Id in '
+        if(devName.contains('__c') && !parentDevName.contains('__c')) { // to catch relations to standard objs from custom objs
+            parentDevName = parentDevName + '__c';
+        }
+        else if(devName.contains('__c') && parentDevName.contains('__c')) { 
+            // no change here since they are using __c 
+        }
+        else{
+            parentDevName = parentDevName +'.Id';
+        }
+
+        // the FIELDS(STANDARD) is because the Id works, but not the name 
         String tempQuery = 'SELECT FIELDS(STANDARD) FROM '+ devName +' WHERE '; // this one is temporary! go back to get all fields
+        String tempQuery2 = 'SELECT FIELDS(STANDARD) FROM '+ devName +' WHERE '; // this one is for the whatid
         Iterator<String> strIdIter = ids.iterator();
         string id;
         while(strIdIter.hasNext()) {
 
             id = strIdIter.next();
-            tempQuery = tempQuery + parentDevName +'.Id=\'' + id + '\''; // should 
+            tempQuery = tempQuery + parentDevName +'=\'' + id + '\''; // dev name
+            tempQuery2 = tempQuery2 + 'WhatId=\'' + id + '\''; // whatId
             if (strIdIter.hasNext()) {
                 tempQuery = tempQuery + ' OR ';
+                tempQuery2 = tempQuery2 + ' OR ';
             }
         }
 
@@ -64,10 +71,19 @@ public without sharing class accVisualizerUtilities {
 
         try {
             rowsToReturn = Database.query(tempQuery);
-        } catch(QueryException err) {
+        } catch(QueryException err1) {
             // the object is not there
-            return new List<SObject>();
+            // return new List<SObject>(); // might need to delete
         }
+        if(rowsToReturn.isEmpty()) {
+            try{ 
+                rowsToReturn = Database.query(tempQuery2);
+            }
+            catch(QueryException err2) {
+                // nothing in here again
+            }
+        }
+
         return rowsToReturn;
     }
 
@@ -88,22 +104,22 @@ public without sharing class accVisualizerUtilities {
             Schema.SObjectField fieldName = childRel.getField();
             // gets the relationship name
             String relName = childRel.getRelationshipName();
+            // the long if statement is because there are many that just clutter ya know
             if(relName != null && 
             (relName != 'AttachedContentDocuments' && relName != 'Attachments' && relName != 'RecordAssociatedGroups' && 
             relName != 'CombinedAttachments' && relName !='ContactRequests' && relName !='ContentDocumentLinks' && relName !='FeedSubscriptionsForEntity' &&
             relName != 'Notes' && relName != 'NotesAndAttachments' && relName != 'Feeds' && relName != 'Histories' && relName !='OpportunityHistories' &&
             relName != 'Shares' && relName != 'ProcessInstances' && relName != 'ProcessSteps' && relName != 'RecordActions' && relName != 'RecordActionHistories' &&
-            relName != 'TopicAssignments')
+            relName != 'TopicAssignments' && relname != 'Events' && relName != 'Emails' && relName != 'Documents' )
             ) {
                 Schema.DescribeFieldResult fieldDescribe = fieldName.getDescribe();
-                Integer fieldDisplayType = fieldDescribe.getRelationshipOrder();
-                //if(relName.contains('__r') ) { // relation objects use __r
-                    // toReturn = toReturn +'displayType:'+ fieldDisplayType + ', relName:' + relName + ', fieldName:' + fieldName + ',childName:' + childName +'\n';
-                    toReturn = toReturn + relName + '\r\n';
-                //}
+                String name = fieldDescribe.getName();
+                toReturn = toReturn + childName + '\r\n';
             }
             
         }
+        toReturn.replace('s__r', '__c'); // these indicate something is wrong
+        toReturn.replace('es__r', '__c'); 
         return toReturn;
     }
 

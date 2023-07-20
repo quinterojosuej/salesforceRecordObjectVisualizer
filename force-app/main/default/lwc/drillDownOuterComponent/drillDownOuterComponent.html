@@ -34,6 +34,18 @@
 
             <template if:false={hasForObjDisplay}>
                 <p class="slds-p-horizontal_small">No records! {displayData} records.</p>
+                <template if:true={attemptDrillDown}>
+                    <!-- <p class='slds-p-horizontal_small'>Nothing here! ~ todo: make button to go and check again</p> -->
+
+                    <lightning-button variant="Neutral" class="slds-m-left_x-small" label="Attempt Drill Down" title="Attempt drill down" onclick={attemptDrillDownButtonClick}></lightning-button>
+                    
+                </template>
+                <template if:true={isLoadingSomething}>
+                    <p class='slds-p-horizontal_small'>{loadingMessage}</p>
+                    <lightning-spinner alternative-text="Loading" size="medium"></lightning-spinner>
+                
+                </template>
+
             </template>
             
 
@@ -43,7 +55,8 @@
             </lightning-card>
         </template>
         <template if:true={parentMetadataMissing}>
-            <p>in the parentMetadata is missing</p>
+            <p class="slds-p-horizontal_small">No Metadata! Creating Metadata.</p>
+            <lightning-spinner alternative-text="Loading" size="medium"></lightning-spinner>
         </template>
 
     </lightning-card>

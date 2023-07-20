@@ -17,8 +17,11 @@ export default class DrillDownOuterComponent extends LightningElement {
 
     @api incomingObj; // aka it's coming from the child
     @api hasForObjDisplay = false;
-    @api canDrillDown = false; // this one is coming later as i need to check if there are children
+    @api canDrillDown = false; 
     @api displayData;
+    @api attemptDrillDown = false;
+    @api isLoadingSomething = false;
+    @api loadingMessage = '';
 
     @api queriedData = {}; // it is objectName with list of objects with all data
 
@@ -33,34 +36,37 @@ export default class DrillDownOuterComponent extends LightningElement {
     }
 
     async getObjectName(idVal) {
-        return await getObjectName( { incomingRecord : this.recordId } ) //WTF is this??
+        return await getObjectName( { incomingRecord : this.recordId } ) // i don't remember this. DO NOT DELETE
     }
 
-    async drillDownButtonClick(event) { // child does something async
+    async drillDownButtonClick(event) { // need to have child component populate
         await this.template.querySelector('c-drill-down-inner-component').drillDownParentButtonClicked(this.incomingObj);
     }
 
     async attemptDrillDownButtonClick(event) { // this is to check why no lookups :shrugs:
         console.log('in the attemptDrillDownButtonClick', this.incomingObj['objName'])
+        this.isLoadingSomething = true;
+        this.loadingMessage = 'Creating Metadata';
         // first, distinguish if no metadata or no lookups
 
         // if no metadata, then make it
         let queueId = null;
         let deploySuccess = false;
         if(this.incomingObj['Id'] === null){
-            console.log('Id is null ')
+            console.log('Id is null, need to make metadata ', JSON.stringify(this.incomingObj))
             let lookupOutput = await getMetaDataLookups( { apiName : this.incomingObj['objName']})
             console.log('lookupOutput:', lookupOutput)
             
-            // the reason for the ternary is custom vs standard objects, annoying i know
+            // the reason for the ternary is custom vs standard objects, annoying i know. also in the 
             queueId = await createMetaDataRecord( { apiName: this.incomingObj['objName'].includes('__c') ? this.incomingObj['objName'].replace('__c', '') : this.incomingObj['objName'], lookups: lookupOutput, devName: this.incomingObj['objName']} )
             console.log('in the otherside of createMetaDataRecord', queueId);
             
             if(queueId) {
                 while (!deploySuccess) {
-                    try{ // oh no... there has to be a better way wtf
+                    try{ // oh no... there has to be a better way, i need a timer here
                         await getObjectVisualizer( { searchObject : this.incomingObj['objName'] } )
                         deploySuccess = true;
+                        this.isLoadingSomething = false;
 
                         await this.template.querySelector('c-drill-down-inner-component').drillDownParentMetadataFix(this.incomingObj['objName']);
 
@@ -72,7 +78,7 @@ export default class DrillDownOuterComponent extends LightningElement {
             }
         }
         // if no lookups then go and check for any
-        else if(this.incomingObj['lookups'].length == 0){ // applies to opportunity obj
+        else if(this.incomingObj['lookups'].length == 0){ // applies to new objs
             console.log('empty lookups', JSON.stringify(this.incomingObj))
             let lookupOutput = await getMetaDataLookups( { apiName : this.incomingObj['objName']});
             console.log('empty lookups after call ', lookupOutput)
@@ -82,7 +88,7 @@ export default class DrillDownOuterComponent extends LightningElement {
             
             if(queueId) {
                 while (!deploySuccess) {
-                    try{ // oh no... there has to be a better way wtf
+                    try{ // same as before, need somekind of timer and function for this below.
                         let temp = await getObjectVisualizer( { searchObject : this.incomingObj['objName'] } )
                         // deploySuccess = await checkStatusOfJobId( { id: queueId} ); // did not work
                         console.log('in hte infinite loop:', JSON.stringify(temp))
@@ -102,10 +108,10 @@ export default class DrillDownOuterComponent extends LightningElement {
         else{
             console.log("i'm a dumbass, check the ifs before this")
         }
-        // no else because, then you wouldn't be here lmao
+        // no else because, then you wouldn't be here (i hope)
     }
 
-    async handleObjHitEvent(event) { // need to either turn these to function or like make it simpler somehow
+    async handleObjHitEvent(event) { // will handle the succesful click of data being clicked.
         this.incomingObj = event.detail;
         // this.hasForObjDisplay = true;
         // on teh HTML we add on+NAME_OF_EVENT={handleObjHitEvent}
@@ -113,7 +119,7 @@ export default class DrillDownOuterComponent extends LightningElement {
 
         if(!this.queriedData.hasOwnProperty(this.incomingObj["devName"])) { // make it
             this.queriedData[this.incomingObj["objName"]] = {"ids": [], "rows": []}
-            // ids is to make the query easier adn the rows is the whole data
+            // ids is to make the query easier adn the rows is the whole data, not really used...
         }
         
         // query with the parent obj relationship
@@ -132,7 +138,6 @@ export default class DrillDownOuterComponent extends LightningElement {
             queryObjId = this.queriedData[this.incomingObj["parentDevName"]].map( (val, ind) => {
                 return val.Id;
             })
-            console.log('line 135')
             queryObjName = this.incomingObj["devName"];
             queryParentObjName = this.incomingObj["parentDevName"];
         }
@@ -142,7 +147,7 @@ export default class DrillDownOuterComponent extends LightningElement {
             console.log('QueryObjeId:', val) // to see what is loaded
         });
 
-        // make query, first is parent 
+        // make query, first is parent, else if is non-parents
         if( this.incomingObj["parentDevName"].length == 0 && (queryObjId != null && queryObjName != null) ) {
             console.log('true parent apex call');
             this.queriedData[queryObjName] = await getParentRows( { ids : queryObjId, devName: queryObjName} );
@@ -156,19 +161,20 @@ export default class DrillDownOuterComponent extends LightningElement {
             // need the lookup ids and the lookup obj name and the current obj name
             console.log('child obj apex  call queryObjId:', queryObjId.length);
             // List<String> ids, String devName, String parentDevName
-            this.queriedData[queryObjName] = await getRows( { ids: queryObjId, devName: this.incomingObj['devName'], parentDevName: this.incomingObj['parentDevName'] } );
+            this.queriedData[queryObjName] = await getRows({ 
+                ids: queryObjId, devName: this.incomingObj['devName'], 
+                parentDevName: this.incomingObj['parentDevName']
+            });
 
-            // console.log('after getRows:', this.objectName, tempVal);
-            console.log('after getRows:', this.objectName, JSON.stringify(this.queriedData[queryObjName]));
+            console.log('after getRows:', this.incomingObj['devName'], this.incomingObj['parentDevName'], JSON.stringify(this.queriedData[queryObjName]));
 
         }
-        else{ // this is where the user did not bother to click the previous one. remove first drillDown on inner
-            // mayber needed???
-            
+        else{ // unnecessary?
         }
 
+        // handles what buttons and data to show.
         if (this.queriedData[queryObjName] && this.queriedData[queryObjName].length > 0) { // aka we got something
-
+            console.log('we got something here to display', this.queriedData[queryObjName]);
             this.queriedData[queryObjName].forEach( (val, ind) => { // to make the link
                 val['Link'] = '/' + val.Id;
             })
@@ -181,18 +187,30 @@ export default class DrillDownOuterComponent extends LightningElement {
                 this.canDrillDown = false;
             }
             this.hasForObjDisplay = true;
+            this.attemptDrillDown = false;
 
         }
+        else if(queryObjName == null) { // aka nothing was queried 
+            // basically, we need data
+            console.log('in the else of the failed queryObjId && queryObjName')
+            // this.canDrillDown = false;
+            this.hasForObjDisplay = false;
+
+            this.attemptDrillDown = true;
+            this.queriedData[queryObjName] = null;
+        }
         else{ 
+            console.log('we got nothing to display so show nothing')
             this.displayData = queryObjName
             this.hasForObjDisplay = false;
             this.canDrillDown = false;
 
             this.queriedData[queryObjName] = null;
+            this.attemptDrillDown = false;
         }
     }
 
-    async handleNoParentEvent(event) {
+    async handleNoParentEvent(event) { // i do not remember this... not sure what this is 
         console.log('handleNoParentEvent', event);
         this.parentMetadataMissing = true;
         

@@ -1,6 +1,6 @@
 public class createMetadata implements Metadata.DeployCallback{
     public void handleResult(Metadata.DeployResult result, Metadata.DeployCallbackContext context) {
-        if (result.status == Metadata.DeployStatus.Succeeded) { // not sure what to do with this one honestly
+        if (result.status == Metadata.DeployStatus.Succeeded) { // i should really just have somekind of return. don't konw how tho... this worked
             System.debug(' success : '+ result);
         } else {
             System.debug(' fail : '+ result);
